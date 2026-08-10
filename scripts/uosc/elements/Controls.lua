@@ -1,66 +1,62 @@
 local Element = require('elements/Element')
 local Button = require('elements/Button')
 local CycleButton = require('elements/CycleButton')
+local ManagedButton = require('elements/ManagedButton')
 local Speed = require('elements/Speed')
 
--- `scale` - `options.controls_size` scale factor.
--- `ratio` - Width/height ratio of a static or dynamic element.
--- `ratio_min` Min ratio for 'dynamic' sized element.
----@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic'; scale: number; ratio?: number; ratio_min?: number; hide: boolean; dispositions?: table<string, boolean>}
+-- sizing:
+--   static - shrink, have highest claim on available space, disappear when there's not enough of it
+--   dynamic - shrink to make room for static elements until they reach their ratio_min, then disappear
+--   gap - shrink if there's no space left
+--   space - expands to fill available space, shrinks as needed
+-- scale - `options.controls_size` scale factor.
+-- ratio - Width/height ratio of a static or dynamic element.
+-- ratio_min Min ratio for 'dynamic' sized element.
+---@alias ControlItem {element?: Element; kind: string; sizing: 'space' | 'static' | 'dynamic' | 'gap'; scale: number; ratio?: number; ratio_min?: number; hide: boolean; dispositions?: {[string]: boolean}[]}
 
 ---@class Controls : Element
 local Controls = class(Element)
 
 function Controls:new() return Class.new(self) --[[@as Controls]] end
 function Controls:init()
-	Element.init(self, 'controls')
+	Element.init(self, 'controls', {render_order = 6})
 	---@type ControlItem[] All control elements serialized from `options.controls`.
 	self.controls = {}
 	---@type ControlItem[] Only controls that match current dispositions.
 	self.layout = {}
 
+	self:init_options()
+end
+
+function Controls:destroy()
+	self:destroy_elements()
+	Element.destroy(self)
+end
+
+function Controls:init_options()
 	-- Serialize control elements
 	local shorthands = {
-		menu               = 'command:menu:script-binding uosc/menu-blurred?' .. lang._button01,
-		subtitles          = 'command:subtitles:script-binding uosc/subtitles#sub>0?' .. lang._button02,
-		audio              = 'command:graphic_eq:script-binding uosc/audio#audio>1?' .. lang._button03,
-		audioAC             = 'command:library_music:script-binding uosc/audio#audio>1?' .. lang._button03,
-		['audio-device']   = 'command:speaker:script-binding uosc/audio-device?' .. lang._button04,
-		video              = 'command:theaters:script-binding uosc/video#video>1?' .. lang._button05,
-		playlist           = 'command:list_alt:script-binding uosc/playlist?' .. lang._button06,
-		playlistAC         = 'command:format_list_bulleted:script-binding uosc/playlist?' .. lang._button06,
-		chapters           = 'command:bookmark:script-binding uosc/chapters#chapters>0?' .. lang._button07,
-		editions           = 'command:bookmarks:script-binding uosc/editions#editions>1?' .. lang._button08,
-		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?' .. lang._button09,
-		['open-file']      = 'command:file_open:script-binding uosc/open-file?' .. lang._button10,
-		items              = 'command:list_alt:script-binding uosc/items?' .. lang._button11,
-		itemsAC             = 'command:format_list_bulleted:script-binding uosc/items?' .. lang._button11,
-		prev               = 'command:skip_previous:script-binding uosc/prev?' .. lang._button12,
-		['next']           = 'command:skip_next:script-binding uosc/next?' .. lang._button13,
-		first              = 'command:first_page:script-binding uosc/first?' .. lang._button14,
-		last               = 'command:last_page:script-binding uosc/last?' .. lang._button15,
-		['loop-playlist']  = 'cycle:repeat:loop-playlist:no/inf!?' .. lang._button16,
-		['loop-file']      = 'cycle:repeat_one:loop-file:no/inf!?' .. lang._button17,
-		shuffle            = 'toggle:shuffle:shuffle?' .. lang._button18,
-		fullscreen         = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?' .. lang._button19,
-
-		-- 自定义的捷径
-		['play_pause']     = 'cycle:not_started:pause:no=play_circle/yes=pause_circle?' .. lang._button_ext01,
-		['pause_play']     = 'cycle:not_started:pause:no=pause/yes=play_arrow?' .. lang._button_ext02,
-		['pl-prev']        = 'command:navigate_before:playlist-prev?' .. lang._button_ext03,
-		['pl-next']        = 'command:navigate_next:playlist-next?' .. lang._button_ext04,
-		border             = 'toggle:border_style:border?' .. lang._button_ext05,
-		ontop              = 'cycle:move_up:ontop:no/yes!?' .. lang._button_ext06,
-		hwdec              = 'cycle:developer_board_off:hwdec:no=developer_board_off/yes=memory/auto-copy=developer_board?' .. lang._button_ext07,
-		unscaled           = 'cycle:fit_screen:video-unscaled:no/yes!?' .. lang._button_ext08,
-		deband             = 'cycle:texture:deband:no/yes!?' .. lang._button_ext09,
-		deint              = 'cycle:clear_all:deinterlace:no/yes!?' .. lang._button_ext10,
-		['shot-vid']       = 'command:screenshot:screenshot video?' .. lang._button_ext11,
-		screenshotAC       = 'command:perm_media:screenshot video?' .. lang._button_ext11,
-
-		['ST-stats_tog']   = 'command:info_outline:script-binding display-stats-toggle?' .. lang._button_ext12,
-		['ST-thumb_tog']   = 'command:panorama:script-binding thumb_toggle?' .. lang._button_ext13,
-		volumeAC           = 'cycle:volume_up:mute:no/yes=volume_off?' ..lang._button_ext14,
+		['play-pause'] = 'cycle:pause:pause:no/yes=play_arrow?' .. t('Play/Pause'),
+		menu = 'command:menu:script-binding uosc/menu-blurred?' .. t('Menu'),
+		subtitles = 'command:subtitles:script-binding uosc/subtitles#sub>0?' .. t('Subtitles'),
+		audio = 'command:graphic_eq:script-binding uosc/audio#audio>1?' .. t('Audio'),
+		['audio-device'] = 'command:speaker:script-binding uosc/audio-device?' .. t('Audio device'),
+		video = 'command:theaters:script-binding uosc/video#video>1?' .. t('Video'),
+		playlist = 'command:list_alt:script-binding uosc/playlist?' .. t('Playlist'),
+		chapters = 'command:bookmark:script-binding uosc/chapters#chapters>0?' .. t('Chapters'),
+		['editions'] = 'command:bookmarks:script-binding uosc/editions#editions>1?' .. t('Editions'),
+		['stream-quality'] = 'command:high_quality:script-binding uosc/stream-quality?' .. t('Stream quality'),
+		['open-file'] = 'command:file_open:script-binding uosc/open-file?' .. t('Open file'),
+		['items'] = 'command:list_alt:script-binding uosc/items?' .. t('Playlist/Files'),
+		prev = 'command:arrow_back_ios:script-binding uosc/prev?' .. t('Previous'),
+		next = 'command:arrow_forward_ios:script-binding uosc/next?' .. t('Next'),
+		first = 'command:first_page:script-binding uosc/first?' .. t('First'),
+		last = 'command:last_page:script-binding uosc/last?' .. t('Last'),
+		['loop-playlist'] = 'cycle:repeat:loop-playlist:no/inf!?' .. t('Loop playlist'),
+		['loop-file'] = 'cycle:repeat_one:loop-file:no/inf!?' .. t('Loop file'),
+		shuffle = 'toggle:shuffle:shuffle?' .. t('Shuffle'),
+		autoload = 'toggle:hdr_auto:autoload@uosc?' .. t('Autoload'),
+		fullscreen = 'cycle:crop_free:fullscreen:no/yes=fullscreen_exit!?' .. t('Fullscreen'),
 	}
 
 	-- Parse out disposition/config pairs
@@ -69,8 +65,10 @@ function Controls:init()
 	local current_item = nil
 	for c in options.controls:gmatch('.') do
 		if not current_item then current_item = {disposition = '', config = ''} end
-		if c == '<' and #current_item.config == 0 then in_disposition = true
-		elseif c == '>' and #current_item.config == 0 then in_disposition = false
+		if c == '<' and #current_item.config == 0 then
+			in_disposition = true
+		elseif c == '>' and #current_item.config == 0 then
+			in_disposition = false
 		elseif c == ',' and not in_disposition then
 			items[#items + 1] = current_item
 			current_item = nil
@@ -95,15 +93,27 @@ function Controls:init()
 		local parts = split(config, ' *: *')
 		local kind, params = parts[1], itable_slice(parts, 2)
 
-		-- Serialize dispositions
+		-- Serialize dispositions into OR groups of AND conditions
+		---@type {[string]: boolean}[]
 		local dispositions = {}
-		for _, definition in ipairs(split(item.disposition, ' *, *')) do
-			if #definition > 0 then
-				local value = definition:sub(1, 1) ~= '!'
-				local name = not value and definition:sub(2) or definition
-				local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
-				dispositions[prop] = value
+		---@type string[]
+		local disposition_props = {}
+		for _, or_group in ipairs(comma_split(item.disposition)) do
+			local group = {}
+			for _, condition in ipairs(split(or_group, ' *+ *')) do
+				if #condition > 0 then
+					local value = condition:sub(1, 1) ~= '!'
+					local name = not value and condition:sub(2) or condition
+					if name:sub(1, 4) == 'has_' or itable_has({'idle', 'image', 'audio', 'video', 'stream'}, name) then
+						local prop = name:sub(1, 4) == 'has_' and name or 'is_' .. name
+						group[prop] = value
+					else
+						disposition_props[#disposition_props + 1] = name
+						group[name] = value
+					end
+				end
 			end
+			dispositions[#dispositions + 1] = group
 		end
 
 		-- Convert toggles into cycles
@@ -118,7 +128,7 @@ function Controls:init()
 		if kind == 'space' then
 			control.sizing = 'space'
 		elseif kind == 'gap' then
-			table_assign(control, {sizing = 'dynamic', scale = 1, ratio = params[1] or 0.3, ratio_min = 0})
+			table_assign(control, {sizing = 'gap', scale = 1, ratio = params[1] or 0.3, ratio_min = 0})
 		elseif kind == 'command' then
 			if #params ~= 2 then
 				mp.error(string.format(
@@ -126,6 +136,7 @@ function Controls:init()
 				))
 			else
 				local element = Button:new('control_' .. i, {
+					render_order = self.render_order,
 					icon = params[1],
 					anchor_id = 'controls',
 					on_click = function() mp.command(params[2]) end,
@@ -157,16 +168,35 @@ function Controls:init()
 				end
 
 				local element = CycleButton:new('control_' .. i, {
-					prop = params[2], anchor_id = 'controls', states = states, tooltip = tooltip,
+					render_order = self.render_order,
+					prop = params[2],
+					anchor_id = 'controls',
+					states = states,
+					tooltip = tooltip,
 				})
 				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
 				if badge then self:register_badge_updater(badge, element) end
 			end
+		elseif kind == 'button' then
+			if #params ~= 1 then
+				mp.error(string.format(
+					'managed button needs 1 parameter, %d received: %s', #params, table.concat(params, '/')
+				))
+			else
+				local element = ManagedButton:new('control_' .. i, {
+					name = params[1],
+					render_order = self.render_order,
+					anchor_id = 'controls',
+					on_hide = function() self:reflow() end,
+				})
+				table_assign(control, {element = element, sizing = 'static', scale = 1, ratio = 1})
+			end
 		elseif kind == 'speed' then
 			if not Elements.speed then
-				local element = Speed:new({anchor_id = 'controls'})
+				local element = Speed:new({anchor_id = 'controls', render_order = self.render_order})
+				local scale = tonumber(params[1]) or 1.3
 				table_assign(control, {
-					element = element, sizing = 'dynamic', scale = params[1] or 1.3, ratio = 3.5, ratio_min = 2,
+					element = element, sizing = 'dynamic', scale = scale, ratio = 3.5, ratio_min = 2,
 				})
 			else
 				msg.error('there can only be 1 speed slider')
@@ -176,6 +206,11 @@ function Controls:init()
 			break
 		end
 
+		if control.element then
+			for _, prop in ipairs(disposition_props) do
+				control.element:observe_mp_property(prop, function() self:reflow() end)
+			end
+		end
 		self.controls[#self.controls + 1] = control
 	end
 
@@ -183,18 +218,39 @@ function Controls:init()
 end
 
 function Controls:reflow()
-	-- Populate the layout only with items that match current disposition
+	-- Populate the layout only with items that are not hidden and match current disposition
 	self.layout = {}
 	for _, control in ipairs(self.controls) do
-		local matches = true
-		for prop, value in pairs(control.dispositions) do
-			if state[prop] ~= value then
-				matches = false
+		local matches = false
+		local conditions_num = 0
+
+		-- Check against OR groups of AND conditions
+		for _, group in pairs(control.dispositions) do
+			local group_matches = true
+			for prop, value in pairs(group) do
+				conditions_num = conditions_num + 1
+				---@type boolean
+				local current_value
+				if prop:sub(1, 4) == 'has_' or prop:sub(1, 3) == 'is_' then
+					current_value = state[prop]
+				else
+					current_value = mp.get_property_bool(prop, false)
+				end
+				if current_value ~= value then
+					group_matches = false
+					break
+				end
+			end
+			if group_matches then
+				matches = true
 				break
 			end
 		end
-		if control.element then control.element.enabled = matches end
-		if matches then self.layout[#self.layout + 1] = control end
+
+		if conditions_num == 0 then matches = true end
+		local show = matches and (not control.element or control.element.hide ~= true)
+		if control.element then control.element.enabled = show end
+		if show then self.layout[#self.layout + 1] = control end
 	end
 
 	self:update_dimensions()
@@ -230,25 +286,27 @@ function Controls:register_badge_updater(badge, element)
 		request_render()
 	end
 
-	if is_external_prop then element['on_external_prop_' .. prop] = function(_, value) handler(prop, value) end
-	else mp.observe_property(observable_name, 'native', handler) end
+	if is_external_prop then
+		element['on_external_prop_' .. prop] = function(_, value) handler(prop, value) end
+	else
+		element:observe_mp_property(observable_name, handler)
+	end
 end
 
 function Controls:get_visibility()
-	return (Elements.speed and Elements.speed.dragging) and 1 or Elements.timeline:get_is_hovered()
+	return Elements:v('speed', 'dragging') and 1 or Elements:maybe('timeline', 'get_is_hovered')
 		and -1 or Element.get_visibility(self)
 end
 
 function Controls:update_dimensions()
-	local window_border = Elements.window_border.size
-	local size = state.fullormaxed and options.controls_size_fullscreen or options.controls_size
-	local spacing = options.controls_spacing
-	local margin = options.controls_margin
+	local window_border = Elements:v('window_border', 'size', 0)
+	local size = round(options.controls_size * state.scale)
+	local spacing = round(options.controls_spacing * state.scale)
+	local margin = round(options.controls_margin * state.scale)
 
 	-- Disable when not enough space
-	local available_space = display.height - Elements.window_border.size * 2
-	if Elements.top_bar.enabled then available_space = available_space - Elements.top_bar.size end
-	if Elements.timeline.enabled then available_space = available_space - Elements.timeline.size_max end
+	local available_space = display.height - window_border * 2 - Elements:v('top_bar', 'size', 0)
+		- Elements:v('timeline', 'size', 0)
 	self.enabled = available_space > size + 10
 
 	-- Reset hide/enabled flags
@@ -261,25 +319,28 @@ function Controls:update_dimensions()
 
 	-- Container
 	self.bx = display.width - window_border - margin
-	self.by = (Elements.timeline.enabled and Elements.timeline.ay or display.height - window_border) - margin
+	self.by = Elements:v('timeline', 'ay', display.height - window_border) - margin
 	self.ax, self.ay = window_border + margin, self.by - size
 
 	-- Controls
-	local available_width = self.bx - self.ax
-	local statics_width = (#self.layout - 1) * spacing
+	local available_width, statics_width = self.bx - self.ax, 0
 	local min_content_width = statics_width
-	local max_dynamics_width, dynamic_units, spaces = 0, 0, 0
+	local max_dynamics_width, dynamic_units, spaces, gaps = 0, 0, 0, 0
 
-	-- Calculate statics_width, min_content_width, and count spaces
+	-- Calculate statics_width, min_content_width, and count spaces & gaps
 	for c, control in ipairs(self.layout) do
 		if control.sizing == 'space' then
 			spaces = spaces + 1
+		elseif control.sizing == 'gap' then
+			gaps = gaps + control.scale * control.ratio
 		elseif control.sizing == 'static' then
-			local width = size * control.scale * control.ratio
+			local width = size * control.scale * control.ratio + (c ~= #self.layout and spacing or 0)
 			statics_width = statics_width + width
 			min_content_width = min_content_width + width
 		elseif control.sizing == 'dynamic' then
-			min_content_width = min_content_width + size * control.scale * control.ratio_min
+			local spacing = (c ~= #self.layout and spacing or 0)
+			statics_width = statics_width + spacing
+			min_content_width = min_content_width + size * control.scale * control.ratio_min + spacing
 			max_dynamics_width = max_dynamics_width + size * control.scale * control.ratio
 			dynamic_units = dynamic_units + control.scale * control.ratio
 		end
@@ -292,7 +353,7 @@ function Controls:update_dimensions()
 			i = i + (a * (a % 2 == 0 and 1 or -1))
 			local control = self.layout[i]
 
-			if control.kind ~= 'gap' and control.kind ~= 'space' then
+			if control.sizing ~= 'gap' and control.sizing ~= 'space' then
 				control.hide = true
 				if control.element then control.element.enabled = false end
 				if control.sizing == 'static' then
@@ -300,6 +361,7 @@ function Controls:update_dimensions()
 					min_content_width = min_content_width - width - spacing
 					statics_width = statics_width - width - spacing
 				elseif control.sizing == 'dynamic' then
+					statics_width = statics_width - spacing
 					min_content_width = min_content_width - size * control.scale * control.ratio_min - spacing
 					max_dynamics_width = max_dynamics_width - size * control.scale * control.ratio
 					dynamic_units = dynamic_units - control.scale * control.ratio
@@ -313,15 +375,69 @@ function Controls:update_dimensions()
 	-- Lay out the elements
 	local current_x = self.ax
 	local width_for_dynamics = available_width - statics_width
-	local space_width = (width_for_dynamics - max_dynamics_width) / spaces
+	local empty_space_width = width_for_dynamics - max_dynamics_width
+	local width_for_gaps = math.min(empty_space_width, size * gaps)
 
+	-- Calculate per-space widths: if exactly 2 spaces, center content between them absolutely
+	local space_widths = {}
+	if spaces == 2 then
+		-- Measure content width in each section: before space1, between spaces, after space2
+		local section = 1
+		local section_widths = {0, 0, 0}
+		for c, control in ipairs(self.layout) do
+			if not control.hide then
+				if control.sizing == 'space' then
+					section = section + 1
+				else
+					local w = 0
+					if control.sizing == 'gap' then
+						if width_for_gaps > 0 then w = width_for_gaps * (control.ratio / gaps) end
+					elseif control.sizing == 'static' then
+						w = size * control.scale * control.ratio + (c ~= #self.layout and spacing or 0)
+					elseif control.sizing == 'dynamic' then
+						local height = size * control.scale
+						w = (max_dynamics_width < width_for_dynamics
+							and height * control.ratio or width_for_dynamics * ((control.scale * control.ratio) / dynamic_units))
+							+ (c ~= #self.layout and spacing or 0)
+					end
+					section_widths[section] = section_widths[section] + w
+				end
+			end
+		end
+		local left_w, middle_w = section_widths[1], section_widths[2]
+		local total_space = empty_space_width - width_for_gaps
+		-- For absolute centering: space1 + left_w + middle_w/2 = available_width/2
+		local space1 = (available_width - middle_w) / 2 - left_w + spacing / 2
+		local space2 = total_space - space1
+		-- Clamp: both spaces must be non-negative. If one side would go negative,
+		-- transfer the deficit to the other side so space1 + space2 == total_space
+		-- is preserved whenever that's still possible (i.e. total_space >= 0).
+		if space1 < 0 then
+			space2 = space2 + space1
+			space1 = 0
+		elseif space2 < 0 then
+			space1 = space1 + space2
+			space2 = 0
+		end
+		if space1 < 0 then space1 = 0 end
+		if space2 < 0 then space2 = 0 end
+		space_widths = {space1, space2}
+	else
+		local individual_space_width = spaces > 0 and ((empty_space_width - width_for_gaps) / spaces) or 0
+		for i = 1, spaces do space_widths[i] = individual_space_width end
+	end
+
+	local space_index = 0
 	for c, control in ipairs(self.layout) do
 		if not control.hide then
 			local sizing, element, scale, ratio = control.sizing, control.element, control.scale, control.ratio
 			local width, height = 0, 0
 
 			if sizing == 'space' then
-				if space_width > 0 then width = space_width end
+				space_index = space_index + 1
+				width = space_widths[space_index] or 0
+			elseif sizing == 'gap' then
+				if width_for_gaps > 0 then width = width_for_gaps * (ratio / gaps) end
 			elseif sizing == 'static' then
 				height = size * scale
 				width = height * ratio
@@ -333,7 +449,7 @@ function Controls:update_dimensions()
 
 			local bx = current_x + width
 			if element then element:set_coordinates(round(current_x), round(self.by - height), bx, self.by) end
-			current_x = bx + spacing
+			current_x = element and bx + spacing or bx
 		end
 	end
 
@@ -344,7 +460,19 @@ end
 function Controls:on_dispositions() self:reflow() end
 function Controls:on_display() self:update_dimensions() end
 function Controls:on_prop_border() self:update_dimensions() end
+function Controls:on_prop_title_bar() self:update_dimensions() end
 function Controls:on_prop_fullormaxed() self:update_dimensions() end
 function Controls:on_timeline_enabled() self:update_dimensions() end
+
+function Controls:destroy_elements()
+	for _, control in ipairs(self.controls) do
+		if control.element then control.element:destroy() end
+	end
+end
+
+function Controls:on_options()
+	self:destroy_elements()
+	self:init_options()
+end
 
 return Controls

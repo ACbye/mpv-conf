@@ -3,33 +3,33 @@
 
 ---@type CodePointRange[]
 local zero_width_blocks = {
-	{0x0000, 0x001F}, -- C0
-	{0x007F, 0x009F}, -- Delete + C1
-	{0x034F, 0x034F}, -- combining grapheme joiner
-	{0x061C, 0x061C}, -- Arabic Letter	Strong
-	{0x200B, 0x200F}, -- {zero-width space, zero-width non-joiner, zero-width joiner, left-to-right mark, right-to-left mark}
-	{0x2028, 0x202E}, -- {line separator, paragraph separator, Left-to-Right Embedding, Right-to-Left Embedding, Pop Directional Format, Left-to-Right Override, Right-to-Left Override}
-	{0x2060, 0x2060}, -- word joiner
-	{0x2066, 0x2069}, -- {Left-to-Right Isolate, Right-to-Left Isolate, First Strong Isolate, Pop Directional Isolate}
-	{0xFEFF, 0xFEFF}, -- zero-width non-breaking space
+	{0x0000,  0x001F}, -- C0
+	{0x007F,  0x009F}, -- Delete + C1
+	{0x034F,  0x034F}, -- combining grapheme joiner
+	{0x061C,  0x061C}, -- Arabic Letter	Strong
+	{0x200B,  0x200F}, -- {zero-width space, zero-width non-joiner, zero-width joiner, left-to-right mark, right-to-left mark}
+	{0x2028,  0x202E}, -- {line separator, paragraph separator, Left-to-Right Embedding, Right-to-Left Embedding, Pop Directional Format, Left-to-Right Override, Right-to-Left Override}
+	{0x2060,  0x2060}, -- word joiner
+	{0x2066,  0x2069}, -- {Left-to-Right Isolate, Right-to-Left Isolate, First Strong Isolate, Pop Directional Isolate}
+	{0xFEFF,  0xFEFF}, -- zero-width non-breaking space
 	-- Some other characters can also be combined https://en.wikipedia.org/wiki/Combining_character
-	{0x0300, 0x036F}, -- Combining Diacritical Marks	 0 BMP	Inherited
-	{0x1AB0, 0x1AFF}, -- Combining Diacritical Marks Extended	 0 BMP	Inherited
-	{0x1DC0, 0x1DFF}, -- Combining Diacritical Marks Supplement	 0 BMP	Inherited
-	{0x20D0, 0x20FF}, -- Combining Diacritical Marks for Symbols	 0 BMP	Inherited
-	{0xFE20, 0xFE2F}, -- Combining Half Marks	 0 BMP	Cyrillic (2 characters), Inherited (14 characters)
+	{0x0300,  0x036F}, -- Combining Diacritical Marks	 0 BMP	Inherited
+	{0x1AB0,  0x1AFF}, -- Combining Diacritical Marks Extended	 0 BMP	Inherited
+	{0x1DC0,  0x1DFF}, -- Combining Diacritical Marks Supplement	 0 BMP	Inherited
+	{0x20D0,  0x20FF}, -- Combining Diacritical Marks for Symbols	 0 BMP	Inherited
+	{0xFE20,  0xFE2F}, -- Combining Half Marks	 0 BMP	Cyrillic (2 characters), Inherited (14 characters)
 	-- Egyptian Hieroglyph Format Controls and Shorthand format Controls
 	{0x13430, 0x1345F}, -- Egyptian Hieroglyph Format Controls	 1 SMP	Egyptian Hieroglyphs
 	{0x1BCA0, 0x1BCAF}, -- Shorthand Format Controls	 1 SMP	Common
 	-- not sure how to deal with those https://en.wikipedia.org/wiki/Spacing_Modifier_Letters
-	{0x02B0, 0x02FF}, -- Spacing Modifier Letters	 0 BMP	Bopomofo (2 characters), Latin (14 characters), Common (64 characters)
+	{0x02B0,  0x02FF}, -- Spacing Modifier Letters	 0 BMP	Bopomofo (2 characters), Latin (14 characters), Common (64 characters)
 }
 
 -- All characters have the same width as the first one
 ---@type CodePointRange[]
 local same_width_blocks = {
-	{0x3400, 0x4DBF}, -- CJK Unified Ideographs Extension A	 0 BMP	Han
-	{0x4E00, 0x9FFF}, -- CJK Unified Ideographs	 0 BMP	Han
+	{0x3400,  0x4DBF}, -- CJK Unified Ideographs Extension A	 0 BMP	Han
+	{0x4E00,  0x9FFF}, -- CJK Unified Ideographs	 0 BMP	Han
 	{0x20000, 0x2A6DF}, -- CJK Unified Ideographs Extension B	 2 SIP	Han
 	{0x2A700, 0x2B73F}, -- CJK Unified Ideographs Extension C	 2 SIP	Han
 	{0x2B740, 0x2B81F}, -- CJK Unified Ideographs Extension D	 2 SIP	Han
@@ -52,18 +52,24 @@ local osd_width, osd_height = 100, 100
 local function utf8_char_bytes(str, i)
 	local char_byte = str:byte(i)
 	local max_bytes = #str - i + 1
-	if char_byte < 0xC0 then return math.min(max_bytes, 1)
-	elseif char_byte < 0xE0 then return math.min(max_bytes, 2)
-	elseif char_byte < 0xF0 then return math.min(max_bytes, 3)
-	elseif char_byte < 0xF8 then return math.min(max_bytes, 4)
-	else return math.min(max_bytes, 1) end
+	if char_byte < 0xC0 then
+		return math.min(max_bytes, 1)
+	elseif char_byte < 0xE0 then
+		return math.min(max_bytes, 2)
+	elseif char_byte < 0xF0 then
+		return math.min(max_bytes, 3)
+	elseif char_byte < 0xF8 then
+		return math.min(max_bytes, 4)
+	else
+		return math.min(max_bytes, 1)
+	end
 end
 
 ---Creates an iterator for an utf-8 encoded string
 ---Iterates over utf-8 characters instead of bytes
 ---@param str string
 ---@return fun(): integer?, string?
-local function utf8_iter(str)
+function utf8_iter(str)
 	local byte_start = 1
 	return function()
 		local start = byte_start
@@ -72,6 +78,60 @@ local function utf8_iter(str)
 		byte_start = start + byte_count
 		return start, str:sub(start, start + byte_count - 1)
 	end
+end
+
+---Estimating string length based on the number of characters
+---@param char string
+---@return number
+function utf8_length(str)
+	local str_length = 0
+	for _, c in utf8_iter(str) do
+		str_length = str_length + 1
+	end
+	return str_length
+end
+
+---Get the next character in an utf-8 encoded string
+---@param str string
+---@param i integer
+---@return integer
+function utf8_next(str, i)
+	if i >= #str then return #str end
+	local len = utf8_char_bytes(str, i + 1)
+	return math.min(i + len, #str)
+end
+
+---Get the previous character in an utf-8 encoded string
+---@param str string
+---@param i integer
+---@return integer
+function utf8_prev(str, i)
+	if i <= 0 then return 0 end
+	local pos = 1
+	local last_valid = 0
+	while pos <= #str do
+		local len = utf8_char_bytes(str, pos)
+		if pos > i then break end
+		last_valid = pos - 1
+		pos = pos + len
+	end
+	return last_valid
+end
+
+---Convert character position to byte position in utf-8 encoded string
+---@param str string
+---@param char_pos integer
+---@return integer
+function utf8_charpos_to_bytepos(str, char_pos)
+	local byte_pos = 1
+	local current_char = 1
+	local str_len = #str
+	while byte_pos <= str_len and current_char < char_pos do
+		local char_len = utf8_char_bytes(str, byte_pos)
+		byte_pos = byte_pos + char_len
+		current_char = current_char + 1
+	end
+	return byte_pos
 end
 
 ---Extract Unicode code point from utf-8 character at index i in str
@@ -98,13 +158,19 @@ end
 ---@param unicode integer
 ---@return string?
 local function unicode_to_utf8(unicode)
-	if unicode < 0x80 then return string.char(unicode)
+	if unicode < 0x80 then
+		return string.char(unicode)
 	else
 		local byte_count
-		if unicode < 0x800 then byte_count = 2
-		elseif unicode < 0x10000 then byte_count = 3
-		elseif unicode < 0x110000 then byte_count = 4
-		else return end -- too big
+		if unicode < 0x800 then
+			byte_count = 2
+		elseif unicode < 0x10000 then
+			byte_count = 3
+		elseif unicode < 0x110000 then
+			byte_count = 4
+		else
+			return
+		end -- too big
 
 		local res = {}
 		local shift = 2 ^ 6
@@ -128,13 +194,13 @@ local function update_osd_resolution(width, height)
 	if width > 0 and height > 0 then osd_width, osd_height = width, height end
 end
 
-mp.observe_property('osd-dimensions', 'native', function (_, dim)
+mp.observe_property('osd-dimensions', 'native', function(_, dim)
 	if dim then update_osd_resolution(dim.w, dim.h) end
 end)
 
 local measure_bounds
 do
-	local text_osd = mp.create_osd_overlay("ass-events")
+	local text_osd = mp.create_osd_overlay('ass-events')
 	text_osd.compute_bounds, text_osd.hidden = true, true
 
 	---@param ass_text string
@@ -252,8 +318,8 @@ do
 		local unicode = utf8_to_unicode(char, 1)
 		for _, block in ipairs(zero_width_blocks) do
 			if unicode >= block[1] and unicode <= block[2] then
-				char_widths[char] = {0, INFINITY}
-				return 0, INFINITY
+				char_widths[char] = {0, math.huge}
+				return 0, math.huge
 			end
 		end
 
@@ -277,8 +343,11 @@ do
 		local size = math.min(max_size * 0.9, 50)
 		char_count = math.min(math.floor(char_count * max_size / size * 0.8), 100)
 		local enclosing_char, enclosing_width, next_char_count = '|', 0, char_count
-		if measured_char == enclosing_char then enclosing_char = ''
-		else enclosing_width = 2 * character_width(enclosing_char, bold) end
+		if measured_char == enclosing_char then
+			enclosing_char = ''
+		else
+			enclosing_width = 2 * character_width(enclosing_char, bold)
+		end
 		local width_ratio, width, px = nil, nil, nil
 		repeat
 			char_count = next_char_count
@@ -303,8 +372,8 @@ end
 ---@return number, integer
 local function character_based_width(text, bold)
 	local max_width = 0
-	local min_px = INFINITY
-	for line in tostring(text):gmatch("([^\n]*)\n?") do
+	local min_px = math.huge
+	for line in tostring(text):gmatch('([^\n]*)\n?') do
 		local total_width = 0
 		for _, char in utf8_iter(line) do
 			local width, px = character_width(char, bold)
@@ -356,7 +425,7 @@ do
 		---@type boolean, boolean
 		local bold, italic = opts.bold or options.font_bold, opts.italic or false
 
-		if options.text_width_estimation then
+		if not config.refine.text_width then
 			---@type {[string|number]: {[1]: number, [2]: integer}}
 			local text_width = get_cache_stage(width_cache, bold)
 			local width_px = text_width[text]
@@ -382,81 +451,210 @@ do
 	---@type {[string]: string}
 	local cache = {}
 
-	---Get width of formatted timestamp as if all the digits were replaced with 0
+	function timestamp_zero_rep_clear_cache()
+		cache = {}
+	end
+
+	---Replace all timestamp digits with 0
 	---@param timestamp string
-	---@param opts {size: number; bold?: boolean; italic?: boolean}
-	---@return number
-	function timestamp_width(timestamp, opts)
+	function timestamp_zero_rep(timestamp)
 		local substitute = cache[#timestamp]
 		if not substitute then
 			substitute = timestamp:gsub('%d', '0')
 			cache[#timestamp] = substitute
 		end
-		return text_width(substitute, opts)
+		return substitute
+	end
+
+	---Get width of formatted timestamp as if all the digits were replaced with 0
+	---@param timestamp string
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	---@return number
+	function timestamp_width(timestamp, opts)
+		return text_width(timestamp_zero_rep(timestamp), opts)
 	end
 end
 
----Wrap the text at the closest opportunity to target_line_length
----@param text string
----@param opts {size: number; bold?: boolean; italic?: boolean}
----@param target_line_length number
----@return string
-function wrap_text(text, opts, target_line_length)
-	local target_line_width = target_line_length * width_length_ratio * opts.size
-	local bold, scale_factor, scale_offset = opts.bold or false, opts_factor_offset(opts)
+do
 	local wrap_at_chars = {' ', '　', '-', '–'}
 	local remove_when_wrap = {' ', '　'}
-	local lines = {}
-	for text_line in text:gmatch("([^\n]*)\n?") do
-		local line_width = scale_offset
-		local line_start = 1
-		local before_end = nil
-		local before_width = scale_offset
-		local before_line_start = 0
-		local before_removed_width = 0
-		for char_start, char in utf8_iter(text_line) do
-			local char_end = char_start + #char - 1
-			local can_wrap = false
-			for _, c in ipairs(wrap_at_chars) do
-				if char == c then
-					can_wrap = true
-					break
+
+	---Wrap the text at the closest opportunity to target_line_length
+	---@param text string
+	---@param opts {size: number; bold?: boolean; italic?: boolean}
+	---@param target_line_length number
+	---@return string, integer
+	function wrap_text(text, opts, target_line_length)
+		local target_line_width = target_line_length * width_length_ratio * opts.size
+		local bold, scale_factor, scale_offset = opts.bold or false, opts_factor_offset(opts)
+		local wrap_at_chars, remove_when_wrap = wrap_at_chars, remove_when_wrap
+		local lines = {}
+		for _, text_line in ipairs(split(text, '\n')) do
+			local line_width = scale_offset
+			local line_start = 1
+			local before_end = nil
+			local before_width = scale_offset
+			local before_line_start = 0
+			local before_removed_width = 0
+			for char_start, char in utf8_iter(text_line) do
+				local char_end = char_start + #char - 1
+				local char_width = character_width(char, bold) * scale_factor
+				line_width = line_width + char_width
+				if (char_end == #text_line) or itable_has(wrap_at_chars, char) then
+					local remove = itable_has(remove_when_wrap, char)
+					local line_width_after_remove = line_width - (remove and char_width or 0)
+					if line_width_after_remove < target_line_width then
+						before_end = remove and char_start - 1 or char_end
+						before_width = line_width_after_remove
+						before_line_start = char_end + 1
+						before_removed_width = remove and char_width or 0
+					else
+						if (target_line_width - before_width) <
+							(line_width_after_remove - target_line_width) then
+							lines[#lines + 1] = text_line:sub(line_start, before_end)
+							line_start = before_line_start
+							line_width = line_width - before_width - before_removed_width + scale_offset
+						else
+							lines[#lines + 1] = text_line:sub(line_start, remove and char_start - 1 or char_end)
+							line_start = char_end + 1
+							line_width = scale_offset
+						end
+						before_end = line_start
+						before_width = scale_offset
+					end
 				end
 			end
-			local char_width = character_width(char, bold) * scale_factor
-			line_width = line_width + char_width
-			if can_wrap or (char_end == #text_line) then
-				local remove = false
-				for _, c in ipairs(remove_when_wrap) do
-					if char == c then
-						remove = true
-						break
-					end
-				end
-				local line_width_after_remove = line_width - (remove and char_width or 0)
-				if line_width_after_remove < target_line_width then
-					before_end = remove and char_start - 1 or char_end
-					before_width = line_width_after_remove
-					before_line_start = char_end + 1
-					before_removed_width = remove and char_width or 0
-				else
-					if (target_line_width - before_width) <
-						(line_width_after_remove - target_line_width) then
-						lines[#lines + 1] = text_line:sub(line_start, before_end)
-						line_start = before_line_start
-						line_width = line_width - before_width - before_removed_width + scale_offset
-					else
-						lines[#lines + 1] = text_line:sub(line_start, remove and char_start - 1 or char_end)
-						line_start = char_end + 1
-						line_width = scale_offset
-					end
-					before_end = line_start
-					before_width = scale_offset
-				end
+			if #text_line >= line_start then
+				lines[#lines + 1] = text_line:sub(line_start)
+			elseif text_line == '' then
+				lines[#lines + 1] = ''
 			end
 		end
-		if #text_line >= line_start then lines[#lines + 1] = text_line:sub(line_start)
-		elseif text_line == '' then lines[#lines + 1] = '' end
+		return table.concat(lines, '\n'), #lines
 	end
-	return table.concat(lines, '\n')
+end
+
+do
+	local word_separators = create_set({
+		' ', '　', '\t', '-', '–', '_', ',', '.', '+', '&', '(', ')', '[', ']', '{', '}', '<', '>', '/', '\\',
+		'（', '）', '【', '】', '；', '：', '《', '》', '“', '”', '‘', '’', '？', '！',
+	})
+
+	---Get the first character of each word
+	---@param str string
+	---@return string[]
+	function initials(str)
+		local initials, is_word_start, word_separators = {}, true, word_separators
+		for _, char in utf8_iter(str) do
+			if word_separators[char] then
+				is_word_start = true
+			elseif is_word_start then
+				initials[#initials + 1] = char
+				is_word_start = false
+			end
+		end
+		return initials
+	end
+end
+
+-- Returns the index of the beginning or end of the current word/segment in a string.
+---@param str string String to search in.
+---@param cursor number Where in the string to start searching.
+---@param direction number `1` to search forward, `-1` backward.
+function find_string_segment_bound(str, cursor, direction)
+	if #str < 2 then return #str end
+	cursor = math.max(1, math.min(cursor, #str))
+	local head, tail = string.sub(str, 1, cursor), string.sub(str, cursor + 1)
+	if direction < 0 then
+		local word_pat, other_pat = '[^%c%s%p]+$', '[%c%s%p]+$'
+		local pat = head:sub(#head):match(word_pat) and word_pat or other_pat
+		-- First we match all same type consecutive chars starting at cursor
+		local segment = head:match(pat) or ''
+		-- If there's only one, we extend the segment with opposite type chars
+		if segment and #segment == 1 then
+			local match = head:sub(1, #head - #segment):match(pat == word_pat and other_pat or word_pat)
+			segment = (match or '') .. segment
+		end
+		return cursor - #segment + 1
+	else
+		local word_pat, other_pat = '^[^%c%s%p]+', '^[%c%s%p]+'
+		local pat = tail:sub(1, 1):match(word_pat) and word_pat or other_pat
+		local segment = tail:match(pat) or ''
+		if segment and #segment == 1 then
+			local match = tail:sub(#segment):match(pat == word_pat and other_pat or word_pat)
+			segment = segment .. (match or '')
+		end
+		return cursor + #segment
+	end
+end
+
+-- Highlight matching text in a string.
+---@param text string
+---@param byte_positions number[]
+---@param font_color string
+---@return string
+function highlight_match(text, byte_positions, font_color, bold)
+	if not byte_positions or #byte_positions == 0 then
+		return ass_escape(text)
+	end
+
+	table.sort(byte_positions)
+	local start_tag = '{\\c&H' .. config.color.match .. '&\\b' .. (bold and '1' or '0') .. '}'
+	local end_tag   = '{\\c&H' .. font_color .. '&}'
+
+	local result = {}
+	local pos_set = {}
+	for _, p in ipairs(byte_positions) do
+		pos_set[p] = true
+	end
+
+	local i = 1
+	local len = #text
+	while i <= len do
+		if pos_set[i] then
+			table.insert(result, start_tag)
+			local char_len = utf8_char_bytes(text, i)
+			table.insert(result, ass_escape(text:sub(i, i + char_len - 1)))
+			table.insert(result, end_tag)
+			i = i + char_len
+		else
+			local char_len = utf8_char_bytes(text, i)
+			table.insert(result, ass_escape(text:sub(i, i + char_len - 1)))
+			i = i + char_len
+		end
+	end
+
+	return table.concat(result)
+end
+
+-- Get positions of matching characters in a romanized string.
+---@param title string
+---@param query string
+---@param mode string
+---@param roman string[]
+function get_roman_match_positions(title, query, mode, roman)
+	local romans = {}
+	local char_ranges = {}
+	local total_len = 0
+	for _, char in ipairs(roman) do
+		local part = (mode == "initial") and char:sub(1, 1) or char
+		part = part:lower()
+		romans[#romans + 1] = part
+		char_ranges[#char_ranges + 1] = {total_len + 1, total_len + #part}
+		total_len = total_len + #part
+	end
+
+	local full_roman = table.concat(romans)
+	local s, e = full_roman:find(query, 1, true)
+	if not s then return nil end
+
+	local byte_positions = {}
+	for i, range in ipairs(char_ranges) do
+		local rs, re = range[1], range[2]
+		if not (re < s or rs > e) then
+			byte_positions[#byte_positions + 1] = utf8_charpos_to_bytepos(title, i)
+		end
+	end
+
+	return byte_positions
 end
