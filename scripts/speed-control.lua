@@ -1,5 +1,5 @@
 -- speed-control.lua
--- 作者：OpenAI ChatGPT
+-- 作者：AC OpenAI ChatGPT
 -- 该脚本用于实现z键循环切换当前速度和1.0速度
 
 local currentSpeed = 1
