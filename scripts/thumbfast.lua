@@ -21,7 +21,7 @@ local options = {
 
     overlay_id = 42,             -- Overlay id
 
-    spawn_first = false,         -- Spawn thumbnailer on file load for faster initial thumbnails
+    spawn_first = true,          -- 文件加载时自动生成缩略图（uosc 5.13 被动模式下必需：uosc 不再发送 thumb 请求消息，只能靠本项触发）
     quit_after_inactivity = 0,   -- Close thumbnailer process after an inactivity period in seconds, 0 to disable
     network = false,             -- Enable on network playback
     audio = false,               -- Enable on audio playback
