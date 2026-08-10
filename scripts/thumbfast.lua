@@ -29,7 +29,7 @@ local options = {
     direct_io = true,            -- Windows only: use native Windows API to write to pipe (requires LuaJIT)
 
     sw_threads = 2,              -- 软解线程
-    binpath = "D:/1_下载/mpv-x86_64-v3-20260810-git-f4d13e1c2c/mpv.exe",  -- 自定义mpv路径（便携版不在 PATH，必须绝对路径，否则缩略图子进程启动失败）
+    binpath = "mpv",             -- 自定义mpv路径
     min_duration = 0,            -- 对短视频关闭预览（秒）
     precise = 0,                 -- 预览精度
     quality = 0,                 -- 预览质量
